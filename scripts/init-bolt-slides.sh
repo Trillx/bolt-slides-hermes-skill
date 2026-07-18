@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+
 REPO_URL="https://github.com/stackblitz/bolt-slides.git"
 PIN="9ad90e6abf93818ea552ae49bb731556f7eb2b0a"
 MIN_NODE_MAJOR=18
@@ -39,6 +43,9 @@ hash_file() {
 
 generate_engine_manifest() {
   local output=$1
+  local unexpected
+  unexpected=$(find src/deck ! -type f ! -type d -print)
+  [[ -z "$unexpected" ]] || fail 'reviewed src/deck contains a symlink or other non-regular entry'
   : > "$output"
   while IFS= read -r file; do
     hash_file "$file" >> "$output"
@@ -120,7 +127,8 @@ printf 'Installing locked dependencies...\n'
 )
 
 [[ ! -e "$DEST" && ! -L "$DEST" ]] || fail "destination appeared during initialization; refusing to replace it: $DEST"
-mv "$PROJECT" "$DEST"
+atomic_publish_directory "$PROJECT" "$DEST" \
+  || fail "destination changed during initialization; staged project was not published: $DEST"
 rmdir "$STAGE_ROOT"
 PUBLISHED=1
 trap - EXIT INT TERM

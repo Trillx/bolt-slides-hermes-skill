@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=scripts/lib/common.sh
+source "$ROOT/scripts/lib/common.sh"
 DEST="${HERMES_HOME:-$HOME/.hermes}/skills/productivity/bolt-slides"
 FORCE=0
 
@@ -26,6 +28,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 ROOT=$(cd "$ROOT" && pwd)
+command -v node >/dev/null 2>&1 || { printf 'ERROR: required command not found: node\n' >&2; exit 1; }
 PARENT=$(dirname "$DEST")
 BASE=$(basename "$DEST")
 [[ "$BASE" != . && "$BASE" != .. && -n "$BASE" ]] || { printf 'ERROR: invalid destination: %s\n' "$DEST" >&2; exit 1; }
@@ -49,9 +52,12 @@ BACKUP=''
 COMMITTED=0
 cleanup() {
   rm -rf "$STAGE"
-  if [[ "$COMMITTED" != 1 && -n "$BACKUP" && -e "$BACKUP" && ! -e "$DEST" ]]; then
-    mv "$BACKUP" "$DEST"
-    rmdir "$BACKUP_ROOT" 2>/dev/null || true
+  if [[ "$COMMITTED" != 1 && -n "$BACKUP" && -e "$BACKUP" ]]; then
+    if [[ ! -e "$DEST" && ! -L "$DEST" ]] && atomic_publish_directory "$BACKUP" "$DEST"; then
+      rmdir "$BACKUP_ROOT" 2>/dev/null || true
+    else
+      printf 'ERROR: automatic rollback was blocked; previous installation remains at: %s\n' "$BACKUP" >&2
+    fi
   fi
 }
 trap cleanup EXIT INT TERM
@@ -79,7 +85,8 @@ if [[ -e "$DEST" ]]; then
   mv "$DEST" "$BACKUP"
 fi
 
-mv "$STAGE" "$DEST"
+atomic_publish_directory "$STAGE" "$DEST" \
+  || { printf 'ERROR: destination changed during installation; staged skill was not published: %s\n' "$DEST" >&2; exit 1; }
 COMMITTED=1
 trap - EXIT INT TERM
 

@@ -55,6 +55,9 @@ path.write_text(text)
 PY
 expect_failure wrong-provenance 'provenance does not match the reviewed upstream pin' "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
 cp "$WORK/provenance" "$PROJECT/.bolt-slides-provenance"
+printf 'commit=0000000000000000000000000000000000000000\n' >> "$PROJECT/.bolt-slides-provenance"
+expect_failure duplicate-provenance 'exactly six canonical fields with no duplicate keys' "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
+cp "$WORK/provenance" "$PROJECT/.bolt-slides-provenance"
 
 cp "$PROJECT/src/deck/Deck.tsx" "$WORK/Deck.tsx"
 printf '\n// integrity-negative-test\n' >> "$PROJECT/src/deck/Deck.tsx"
@@ -63,6 +66,11 @@ cp "$WORK/Deck.tsx" "$PROJECT/src/deck/Deck.tsx"
 
 printf 'export const unexpected = true;\n' > "$PROJECT/src/deck/Unexpected.ts"
 expect_failure engine-file-addition 'src/deck file inventory or content differs' "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
+rm "$PROJECT/src/deck/Unexpected.ts"
+
+printf 'export const external = true;\n' > "$WORK/External.ts"
+ln -s "$WORK/External.ts" "$PROJECT/src/deck/Unexpected.ts"
+expect_failure engine-symlink 'src/deck contains a symlink or other non-regular entry' "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
 rm "$PROJECT/src/deck/Unexpected.ts"
 
 mv "$PROJECT/src/deck/Deck.tsx" "$WORK/Deck.deleted"
@@ -87,6 +95,42 @@ if grep -Fq "$FAKE_SECRET" "$WORK/source-secret.log"; then
   exit 1
 fi
 rm "$PROJECT/src/leak.ts"
+
+printf 'VITE_REVIEW_TOKEN=not-sensitive-test-data\n' > "$PROJECT/.env.production"
+expect_failure sensitive-vite-env 'VITE_ environment variable has a sensitive name' \
+  "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
+rm "$PROJECT/.env.production"
+
+cp "$PROJECT/src/App.tsx" "$WORK/App.before-dist-secret.tsx"
+cp "$PROJECT/vite.config.ts" "$WORK/vite.config.ts"
+python3 - "$PROJECT/src/App.tsx" "$PROJECT/vite.config.ts" "${FAKE_SECRET#sk-}" <<'PY'
+from pathlib import Path
+import sys
+
+app = Path(sys.argv[1])
+config = Path(sys.argv[2])
+suffix = sys.argv[3]
+app.write_text(
+    'declare const __REVIEW_TOKEN__: string;\nconsole.log(__REVIEW_TOKEN__);\n'
+    + app.read_text(encoding='utf-8'),
+    encoding='utf-8',
+)
+config.write_text(
+    config.read_text(encoding='utf-8').replace(
+        'plugins: [react()],',
+        "plugins: [react()],\n  define: { __REVIEW_TOKEN__: JSON.stringify('sk-' + '" + suffix + "') },",
+    ),
+    encoding='utf-8',
+)
+PY
+expect_failure production-secret 'possible secret material found in production output' \
+  "$ROOT/scripts/verify-bolt-slides.sh" "$PROJECT"
+if grep -Fq "$FAKE_SECRET" "$WORK/production-secret.log"; then
+  printf 'FAIL: production secret scanner echoed matching secret content\n' >&2
+  exit 1
+fi
+cp "$WORK/App.before-dist-secret.tsx" "$PROJECT/src/App.tsx"
+cp "$WORK/vite.config.ts" "$PROJECT/vite.config.ts"
 
 printf '%s\n' "$FAKE_SECRET" > "$WORK/external-secret.txt"
 ln -s "$WORK/external-secret.txt" "$PROJECT/src/external-link.txt"
@@ -136,6 +180,48 @@ if [[ ${BOLT_SLIDES_SKIP_CAPTURE:-0} != 1 ]]; then
     expect_failure port-collision 'already serves HTTP' \
       env BOLT_SLIDES_CAPTURE_PORT="$PORT_TEST" \
       "$ROOT/scripts/capture-slides.sh" "$PROJECT" 1 "$WORK/collision-output" 1280 720
+    kill "$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
+    SERVER_PID=''
+
+    STRICT_PORT=${BOLT_SLIDES_STRICT_PORT_TEST:-43175}
+    python3 - "$STRICT_PORT" >"$WORK/tcp.log" 2>&1 <<'PY' &
+import socket
+import sys
+
+port = int(sys.argv[1])
+with socket.socket() as server:
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('127.0.0.1', port))
+    server.listen()
+    while True:
+        connection, _ = server.accept()
+        connection.close()
+PY
+    SERVER_PID=$!
+    strict_ready=0
+    for _ in {1..40}; do
+      if python3 - "$STRICT_PORT" <<'PY' >/dev/null 2>&1
+import socket
+import sys
+with socket.create_connection(('127.0.0.1', int(sys.argv[1])), timeout=0.2):
+    pass
+PY
+      then
+        strict_ready=1
+        break
+      fi
+      sleep 0.1
+    done
+    [[ $strict_ready == 1 ]] || {
+      printf 'FAIL: strict-port fixture did not become ready on port %s\n' "$STRICT_PORT" >&2
+      exit 1
+    }
+    expect_failure strict-port 'production preview exited before becoming ready' \
+      env BOLT_SLIDES_CAPTURE_PORT="$STRICT_PORT" \
+      "$ROOT/scripts/capture-slides.sh" "$PROJECT" 1 "$WORK/strict-port-output" 1280 720
+    grep -Eqi 'port .*already in use' "$WORK/strict-port.log" \
+      || { printf 'FAIL: strict-port test did not reach Vite strictPort enforcement\n' >&2; exit 1; }
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
     SERVER_PID=''

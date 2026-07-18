@@ -4,16 +4,18 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 python3 "$ROOT/tests/validate_package.py"
-bash -n "$ROOT"/scripts/*.sh "$ROOT"/tests/*.sh
+bash -n "$ROOT"/scripts/*.sh "$ROOT"/scripts/lib/*.sh "$ROOT"/tests/*.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck "$ROOT"/scripts/*.sh "$ROOT"/tests/*.sh
+  shellcheck "$ROOT"/scripts/*.sh "$ROOT"/scripts/lib/*.sh "$ROOT"/tests/*.sh
 elif [[ ${CI:-false} == true ]]; then
   printf 'FAIL: ShellCheck is required in CI\n' >&2
   exit 1
 else
   printf 'WARN: ShellCheck is not installed; static shell analysis skipped\n' >&2
 fi
+
+"$ROOT/tests/test_atomic_publish.sh"
 
 INSTALL_HOME=$(mktemp -d)
 trap 'rm -rf "$INSTALL_HOME"' EXIT

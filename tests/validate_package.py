@@ -33,6 +33,8 @@ required_files = [
     "scripts/verify-bolt-slides.sh",
     "scripts/capture-slides.sh",
     "scripts/install-hermes-skill.sh",
+    "scripts/lib/common.sh",
+    "tests/test_atomic_publish.sh",
     "tests/check_upstream_audit.py",
     "tests/assert_screenshots.py",
 ]

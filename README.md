@@ -52,7 +52,9 @@ Read [`references/hermes-vs-upstream.md`](references/hermes-vs-upstream.md) for 
 - Node.js 18 or newer
 - npm
 - `tar`
+- `cmp`
 - One SHA-256 utility: `sha256sum` (Linux) or `shasum` (macOS)
+- Python 3 for repository validation and screenshot assertions
 
 ### Optional visual capture
 
@@ -95,7 +97,7 @@ bash scripts/install-hermes-skill.sh
 
 The installer refuses to overwrite an existing installation unless `--force` is provided. Forced installs first stage and validate the replacement, then retain the previous installation in a uniquely named backup.
 
-Do not use `hermes skills install` with the raw `SKILL.md` URL: that single-file flow would omit this skill's required scripts, references, and templates.
+Do not use `hermes skills install` with this repository's raw `SKILL.md` URL. Hermes can fetch explicitly linked support files for compatible skills, but this package also depends on executable shell/Python assets, nested helper files, file modes, and repository-level validation. Use one of the complete-repository installation methods above.
 
 ### Update or remove
 
@@ -106,6 +108,16 @@ git -C "${HERMES_HOME:-$HOME/.hermes}/skills/productivity/bolt-slides" fetch --t
 git -C "${HERMES_HOME:-$HOME/.hermes}/skills/productivity/bolt-slides" pull --ff-only
 bash "${HERMES_HOME:-$HOME/.hermes}/skills/productivity/bolt-slides/tests/validate.sh"
 ```
+
+If you cloned elsewhere and used `install-hermes-skill.sh`, update and validate that source checkout, then reinstall transactionally:
+
+```bash
+git -C ./bolt-slides-hermes-skill pull --ff-only
+bash ./bolt-slides-hermes-skill/tests/validate.sh
+bash ./bolt-slides-hermes-skill/scripts/install-hermes-skill.sh --force
+```
+
+The installer prints the unique backup path retained for the previous installation.
 
 To remove a manual installation, first confirm the displayed path, then move or delete that `bolt-slides` directory and start a new session. Preserve any local changes or backups before removal.
 
@@ -139,11 +151,11 @@ bash "${HERMES_HOME:-$HOME/.hermes}/skills/productivity/bolt-slides/scripts/capt
 
 ## What verification checks
 
-- Provenance matches the exact reviewed upstream repository and commit.
-- The complete `src/deck/` file inventory and contents match the initialized engine lock.
+- Provenance contains exactly one canonical value for every required field and matches the reviewed upstream repository and commit.
+- The complete `src/deck/` regular-file inventory and contents match the initialized engine lock; symlinks and special entries are rejected.
 - Dependency manifests still match the initialized lock unless explicitly reviewed.
 - Starter demo, placeholder title, and prohibited trigger content are absent.
-- Likely secrets are absent from browser-delivered files.
+- Likely secrets are absent from source, Vite environment/configuration files, and the final production bundle; sensitive `VITE_` variable names are rejected because their values are browser-visible.
 - TypeScript type-check succeeds.
 - Production build succeeds and creates `dist/index.html`.
 - Production dependency audit passes.
@@ -161,6 +173,7 @@ scripts/init-bolt-slides.sh       Pinned project initializer
 scripts/verify-bolt-slides.sh     Mechanical quality gates
 scripts/capture-slides.sh         Wide/mobile screenshot automation
 scripts/install-hermes-skill.sh   Safe local installer
+scripts/lib/common.sh              Shared atomic publication primitive
 tests/                            Metadata and end-to-end tests
 .github/workflows/validate.yml    Continuous validation
 ```

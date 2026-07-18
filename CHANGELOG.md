@@ -4,6 +4,19 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-18
+
+### Security
+
+- Reject contradictory duplicate provenance fields and non-regular engine entries.
+- Scan Vite environment/configuration inputs and built `dist/` assets for likely browser-delivered secrets.
+- Refuse destination races with a shared non-nesting atomic directory publication helper.
+
+### Fixed
+
+- Exercise Vite `--strictPort` with a non-HTTP TCP collision fixture.
+- Document complete-package installation, installer-based updates, and all executable prerequisites accurately.
+
 ## [1.0.1] - 2026-07-18
 
 ### Fixed

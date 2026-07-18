@@ -37,6 +37,9 @@ hash_file() {
 
 generate_engine_manifest() {
   local output=$1
+  local unexpected
+  unexpected=$(find src/deck ! -type f ! -type d -print)
+  [[ -z "$unexpected" ]] || fail 'src/deck contains a symlink or other non-regular entry'
   : > "$output"
   while IFS= read -r file; do
     hash_file "$file" >> "$output"
@@ -73,6 +76,29 @@ scan_regular_text() {
   return "$found"
 }
 
+validate_provenance() {
+  local -a lines=()
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    lines+=("$line")
+  done < .bolt-slides-provenance
+
+  [[ ${#lines[@]} -eq 6 ]] \
+    || fail 'provenance must contain exactly six canonical fields with no duplicate keys'
+  [[ "${lines[0]}" == 'repository=https://github.com/stackblitz/bolt-slides.git' ]] \
+    || fail 'provenance does not name the canonical StackBlitz repository'
+  [[ "${lines[1]}" == "commit=$PIN" ]] \
+    || fail "provenance does not match the reviewed upstream pin: $PIN"
+  [[ "${lines[2]}" == 'license=MIT' ]] \
+    || fail 'provenance does not record the upstream MIT license'
+  [[ "${lines[3]}" == 'removed_project_agent_guidance=.bolt/skills/slides/SKILL.md' ]] \
+    || fail 'provenance does not record removal of conflicting upstream agent guidance'
+  [[ "${lines[4]}" =~ ^initialized_utc=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] \
+    || fail 'provenance contains an invalid initialization timestamp'
+  [[ "${lines[5]}" == 'workflow=hermes:bolt-slides' ]] \
+    || fail 'provenance does not identify the Hermes Bolt Slides workflow'
+}
+
 [[ -d "$PROJECT" ]] || fail "project directory not found: $PROJECT"
 cd "$PROJECT"
 
@@ -90,12 +116,7 @@ node -e "const m=Number(process.versions.node.split('.')[0]); if (m < $MIN_NODE_
 [[ -f .bolt-slides-engine.sha256 ]] || fail '.bolt-slides-engine.sha256 not found'
 [[ -f .bolt-slides-dependencies.sha256 ]] || fail '.bolt-slides-dependencies.sha256 not found'
 
-grep -Eq '^repository=https://github.com/stackblitz/bolt-slides\.git$' .bolt-slides-provenance \
-  || fail 'provenance does not name the canonical StackBlitz repository'
-grep -Eq "^commit=$PIN$" .bolt-slides-provenance \
-  || fail "provenance does not match the reviewed upstream pin: $PIN"
-grep -Eq '^removed_project_agent_guidance=\.bolt/skills/slides/SKILL\.md$' .bolt-slides-provenance \
-  || fail 'provenance does not record removal of conflicting upstream agent guidance'
+validate_provenance
 [[ ! -e .bolt/skills/slides/SKILL.md ]] || fail 'conflicting upstream project-local skill remains in the generated project'
 
 TMP=$(mktemp -d)
@@ -140,10 +161,25 @@ else
 fi
 
 SECRET_PATTERN='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}'
-if scan_regular_text "$SECRET_PATTERN" src public index.html; then
+ENV_FILES=()
+for env_file in .env .env.*; do
+  if [[ -L "$env_file" ]]; then
+    fail 'Vite environment files must not be symlinks'
+  elif [[ -f "$env_file" ]]; then
+    ENV_FILES+=("$env_file")
+  fi
+done
+if scan_regular_text "$SECRET_PATTERN" src public index.html vite.config.* "${ENV_FILES[@]}"; then
   :
 else
   fail 'possible secret material found in browser-delivered files; only sanitized filenames were printed'
+fi
+if (( ${#ENV_FILES[@]} > 0 )); then
+  if scan_regular_text 'VITE_[A-Za-z0-9_]*(SECRET|TOKEN|KEY|PASSWORD|CREDENTIAL)' "${ENV_FILES[@]}"; then
+    :
+  else
+    fail 'a VITE_ environment variable has a sensitive name; VITE_ values are delivered to the browser'
+  fi
 fi
 
 printf 'Installing a clean dependency tree from the lockfile...\n'
@@ -155,6 +191,11 @@ npx --no-install tsc --noEmit
 printf 'Building production assets...\n'
 npm run build
 [[ -s dist/index.html ]] || fail 'production build did not create a non-empty dist/index.html'
+if scan_regular_text "$SECRET_PATTERN" dist; then
+  :
+else
+  fail 'possible secret material found in production output; only sanitized filenames were printed'
+fi
 
 printf 'Auditing production dependencies...\n'
 npm audit --omit=dev

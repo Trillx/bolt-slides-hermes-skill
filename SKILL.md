@@ -1,7 +1,7 @@
 ---
 name: bolt-slides
 description: "Use when the user specifically requests Bolt Slides or chooses an interactive, responsive, URL-first React presentation as the primary deliverable. Researches, themes, tests, and packages Bolt Slides decks while preserving the upstream engine. If an existing Bolt Slides checkout is supplied, inspect and adopt it rather than reinitialize blindly. Do not use as the only workflow when the primary deliverable is an editable .pptx or static PDF; load the appropriate document skill or produce both formats explicitly."
-version: 1.0.1
+version: 1.0.2
 author: Michael Rodriguez
 license: MIT
 platforms: [linux, macos]

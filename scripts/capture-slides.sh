@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+
 usage() {
   printf 'Usage: %s PROJECT_DIR SLIDE_COUNT OUTPUT_DIR [WIDTH] [HEIGHT]\n' "$0" >&2
   exit 2
@@ -153,6 +157,7 @@ while (( index <= COUNT )); do
 done
 
 [[ ! -e "$OUT" && ! -L "$OUT" ]] || fail "output path appeared during capture; refusing to replace it: $OUT"
-mv "$PUBLISH_STAGE" "$OUT"
+atomic_publish_directory "$PUBLISH_STAGE" "$OUT" \
+  || fail "output path changed during capture; staged screenshots were not published: $OUT"
 PUBLISH_STAGE=''
 printf 'Published %s verified screenshots at %sx%s into %s\n' "$COUNT" "$WIDTH" "$HEIGHT" "$OUT"
