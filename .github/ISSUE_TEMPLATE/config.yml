@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Bolt Slides upstream issues
+    url: https://github.com/stackblitz/bolt-slides/issues
+    about: Report presentation engine and component issues to the upstream project.
