@@ -125,6 +125,10 @@ if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
   printf 'WARN: running Chromium as root requires --no-sandbox; use an unprivileged account when possible.\n' >&2
   CHROME_ARGS+=(--no-sandbox)
 fi
+if [[ ${BOLT_SLIDES_ALLOW_NO_SANDBOX:-0} == 1 ]] && [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+  printf 'WARN: Chromium sandbox explicitly disabled; use this only in an isolated ephemeral CI runner or container.\n' >&2
+  CHROME_ARGS+=(--no-sandbox)
+fi
 
 index=1
 while (( index <= COUNT )); do

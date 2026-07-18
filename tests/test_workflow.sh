@@ -121,8 +121,20 @@ if [[ ${BOLT_SLIDES_SKIP_CAPTURE:-0} != 1 ]]; then
     PORT_TEST=${BOLT_SLIDES_PORT_COLLISION_TEST:-43174}
     python3 -m http.server "$PORT_TEST" --bind 127.0.0.1 --directory "$WORK" >"$WORK/http.log" 2>&1 &
     SERVER_PID=$!
-    sleep 0.5
-    BOLT_SLIDES_CAPTURE_PORT=$PORT_TEST expect_failure port-collision 'already serves HTTP' \
+    collision_ready=0
+    for _ in {1..40}; do
+      if curl --silent --fail "http://127.0.0.1:$PORT_TEST/" >/dev/null 2>&1; then
+        collision_ready=1
+        break
+      fi
+      sleep 0.1
+    done
+    [[ $collision_ready == 1 ]] || {
+      printf 'FAIL: collision fixture did not become ready on port %s\n' "$PORT_TEST" >&2
+      exit 1
+    }
+    expect_failure port-collision 'already serves HTTP' \
+      env BOLT_SLIDES_CAPTURE_PORT="$PORT_TEST" \
       "$ROOT/scripts/capture-slides.sh" "$PROJECT" 1 "$WORK/collision-output" 1280 720
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true

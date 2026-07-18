@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
       - name: Install ShellCheck on macOS
@@ -43,11 +43,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '20'
       - name: Install ShellCheck on macOS
@@ -58,4 +58,5 @@ jobs:
           BOLT_SLIDES_RUN_E2E: '1'
           BOLT_SLIDES_CAPTURE_PORT: '43173'
           BOLT_SLIDES_PORT_COLLISION_TEST: '43174'
+          BOLT_SLIDES_ALLOW_NO_SANDBOX: ${{ runner.os == 'Linux' && '1' || '0' }}
         run: bash tests/validate.sh

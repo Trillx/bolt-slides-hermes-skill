@@ -95,6 +95,8 @@ bash "$BOLT_SLIDES_SKILL_DIR/scripts/capture-slides.sh" . 12 ./qa-mobile 390 844
 
 Replace `12` with the deck's actual slide count and choose output directories that do not already contain files. The script starts a localhost-only production preview with strict port binding, verifies a deck-specific readiness marker, captures each `/#N` route, validates every PNG, and publishes the screenshot directory only after the complete set succeeds. Do not trust Chromium's exit code alone: some confined builds can report success even when no screenshot was written. The script handles Snap Chromium by writing through its allowed staging directory and then transactionally publishing verified files to the requested output directory.
 
+If Ubuntu AppArmor blocks Chromium with `No usable sandbox!`, install a path-specific AppArmor profile that grants `userns` to the browser binary. Do not disable the sandbox on a workstation. `BOLT_SLIDES_ALLOW_NO_SANDBOX=1` exists only for already-isolated, ephemeral CI runners or containers and emits a warning when used.
+
 After capture, enumerate the output files and build a contact sheet or inspect every image individually. A log line saying “captured” is not evidence unless the files can be read back.
 
 If Chromium is not available, use the browser tool to navigate and capture screenshots. Do not install a large browser dependency without checking the environment and user preference.
