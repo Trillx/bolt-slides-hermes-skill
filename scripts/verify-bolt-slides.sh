@@ -162,14 +162,23 @@ fi
 
 SECRET_PATTERN='AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{30,}'
 ENV_FILES=()
+SECRET_INPUTS=(src public index.html)
+for config_file in vite.config.*; do
+  if [[ -L "$config_file" ]]; then
+    fail 'Vite configuration files must not be symlinks'
+  elif [[ -f "$config_file" ]]; then
+    SECRET_INPUTS+=("$config_file")
+  fi
+done
 for env_file in .env .env.*; do
   if [[ -L "$env_file" ]]; then
     fail 'Vite environment files must not be symlinks'
   elif [[ -f "$env_file" ]]; then
     ENV_FILES+=("$env_file")
+    SECRET_INPUTS+=("$env_file")
   fi
 done
-if scan_regular_text "$SECRET_PATTERN" src public index.html vite.config.* "${ENV_FILES[@]}"; then
+if scan_regular_text "$SECRET_PATTERN" "${SECRET_INPUTS[@]}"; then
   :
 else
   fail 'possible secret material found in browser-delivered files; only sanitized filenames were printed'
