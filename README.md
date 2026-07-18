@@ -75,8 +75,9 @@ Verify the complete installation, then start a new Hermes session so the skill l
 
 ```bash
 hermes skills list
-hermes skills inspect bolt-slides
 ```
+
+Confirm that `bolt-slides` appears as an enabled local skill. The `hermes skills inspect` command currently resolves install-source identifiers rather than every manually cloned local skill, so it is not a reliable verification command for this installation method.
 
 To force-load it in a CLI session instead of relying on metadata routing:
 

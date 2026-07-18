@@ -4,6 +4,15 @@ All notable changes to this project are documented here. This project follows [S
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-18
+
+### Fixed
+
+- GitHub Actions browser capture on isolated Ubuntu runners with an explicit, warned CI-only sandbox override.
+- Deterministic port-collision fixture readiness on Linux and macOS.
+- Manual local-skill verification guidance for current Hermes CLI behavior.
+- GitHub Actions upgraded to immutable v6 action commits using the Node.js 24 action runtime.
+
 ## [1.0.0] - 2026-07-18
 
 ### Added
