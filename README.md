@@ -3,10 +3,34 @@
 [![Validate](https://github.com/Trillx/bolt-slides-hermes-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/Trillx/bolt-slides-hermes-skill/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+<p align="center">
+  <img src="assets/hermes-agent-girl-bolt-slides.png" alt="Hermes Agent Girl harnessing the Bolt Slides runtime" width="900">
+</p>
+
+<p align="center"><strong>From evidence to a verified React presentation—built, checked, and delivered by Hermes Agent.</strong></p>
+
 An evidence-first, verification-heavy **Hermes Agent skill** for creating responsive React presentations with [Bolt Slides](https://github.com/stackblitz/bolt-slides) by StackBlitz.
 
 > [!IMPORTANT]
 > This is an independent community integration for Hermes Agent. It is not an official StackBlitz or Bolt product, and StackBlitz does not endorse or maintain it.
+
+## Install it by asking Hermes
+
+Use the copy button on this block, paste it into a Hermes chat, and send:
+
+```text
+Install the Bolt Slides skill for my active Hermes Agent profile from:
+https://github.com/Trillx/bolt-slides-hermes-skill
+
+Inspect the repository and my current skills before changing anything. If a
+bolt-slides skill already exists, stop and ask before replacing it. Otherwise:
+1. Clone the complete repository into skills/productivity/bolt-slides.
+2. Run tests/validate.sh.
+3. Confirm hermes skills list shows bolt-slides enabled.
+4. Remind me to start a new Hermes session so the skill is discovered.
+```
+
+That is the easiest installation path. Hermes can inspect the package, install the complete repository, run its validation, and report exactly what changed. Prefer commands? The full manual installation and lifecycle instructions are below.
 
 ## What this is
 
@@ -63,7 +87,7 @@ Read [`references/hermes-vs-upstream.md`](references/hermes-vs-upstream.md) for 
 
 Native Windows PowerShell is not currently supported by the shell scripts. Use WSL. Linux is tested locally; Linux and macOS are exercised in CI.
 
-## Install
+## Manual installation and lifecycle
 
 ### Clone directly into Hermes
 
@@ -167,6 +191,7 @@ Mechanical verification does not replace visual review. Every deck still require
 
 ```text
 SKILL.md                          Hermes skill instructions
+assets/hermes-agent-girl-bolt-slides.png  Repository hero artwork
 references/                       Deep guidance loaded on demand
 templates/deck-brief.md           Evidence and design contract
 scripts/init-bolt-slides.sh       Pinned project initializer
